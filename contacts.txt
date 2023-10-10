@@ -1,0 +1,3 @@
+winner,kpodo,0232454,Greater Accra,Accra
+Jack Man,Jackson,24567,Ashanti,Kumasi
+Edem,Doglas,23456,North,Tamale
