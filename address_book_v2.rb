@@ -21,38 +21,44 @@ module AddressBook
 
     # functions for displaying options and getting user input
 
-    def getBackOrExitOption(option, onBack)
-        print "\n#{option} (B/X): "
-        option = gets.chomp.downcase
+    def getBackOrExitOption()
+        puts "\nChoose an option"
+        puts "1. Home"
+        puts "0. Exit"
+        option = gets.chomp
 
-        if option == "b"
-            onBack.call
-        elsif option == "e"
+        if option == "1"
+            main()
+        elsif option == "0"
             system('exit')
         else
             puts "Enter a valid option"
-            getBackOrExitOption(option)
+            getBackOrExitOption()
         end
     end
 
-    def getRetryHomeOrExitOption(message, onRetry, onHome)
-        print "\n#{message} (R/H/X): "
+    def getRetryHomeOrExitOption(onRetry)
+        puts "\nChoose an option"
+        puts "1. Retry"
+        puts "2. Home"
+        puts "0. Exit"
+
         option = gets.chomp.downcase
 
-        if option == "r"
+        if option == "1"
             onRetry.call
-        elsif option == "h"
-            onHome.call
-        elsif option == "x"
+        elsif option == "2"
+            main()
+        elsif option == "0"
             system('exit')
         else
             puts "Enter a valid option"
-            getRetryHomeOrExitOption(message, onRetry, onHome)
+            getRetryHomeOrExitOption(onRetry)
         end
     end
 
-    def getChooseMenuOption(message)
-        print "\n#{message}: "
+    def getChooseMenuOption()
+        print "Choose an option(0-4)"
         option = gets.chomp
 
         if option == "0" || option == "1" || option == "2" || option == "3" || option == "4"
@@ -70,7 +76,7 @@ module AddressBook
             end
         else
             puts "\Enter a valid option"
-            getChooseMenuOption(message)
+            getChooseMenuOption()
         end
     end
 
@@ -101,7 +107,7 @@ module AddressBook
 
         puts "\n0. Exit"
 
-        getChooseMenuOption("Choose an option(0-4)")
+        getChooseMenuOption()
     end
 
     # Operations for the menu options(Add, Edit, Delete, View)
@@ -121,9 +127,7 @@ module AddressBook
     def displayContacts(contacts)
         if contacts.ntuples == 0
             puts "No contacts found"
-            getBackOrExitOption("Press (B or X) to go back or exit", 
-                -> { main }
-            )
+            getBackOrExitOption()
         
         else
             contacts.each.with_index(1) do |contact, index|
@@ -158,10 +162,9 @@ module AddressBook
 
         getYesOrNoOption("Do you want to add contact with the above details?",
             -> { addContactToDB(firstName, lastName, phoneNumber, region, suburb) },
-            -> { getRetryHomeOrExitOption("Press (H, R, X) to retry entry, go home, or exit.", 
-                -> {addContact}, 
-                -> {main}
-            ) 
+            -> { getRetryHomeOrExitOption(
+                    -> {addContact},
+                ) 
             }
         )          
 
@@ -186,9 +189,8 @@ module AddressBook
             
             getYesOrNoOption("Do you want to edit this contact?", 
                 -> {editContactInDB(option.to_i-1, contact)}, 
-                -> { getRetryHomeOrExitOption("Press (H, R, X) to retry entry, go home, or exit.", 
-                    -> {editContact}, 
-                    -> { main }
+                -> { getRetryHomeOrExitOption(
+                    -> {editContact}
                     )
                 }
             )
@@ -201,7 +203,6 @@ module AddressBook
     def deleteContact
         puts "********Delete Contact********"
 
-        # display all contacts first
         contacts = @db.getDB.exec("SELECT * FROM contacts")
 
         displayContacts(contacts)
@@ -217,9 +218,8 @@ module AddressBook
             displaySelectedContact(contact['first_name'], contact['last_name'], contact['phone_number'], contact['region'], contact['suburb'])
 
             getYesOrNoOption("Do you want to delete this contact?", -> {deleteContactInDB(option.to_i-1, contact)}, 
-                -> { getRetryHomeOrExitOption("Press (H, R, X) to retry entry, go home, or exit.", 
-                    -> {deleteContact}, 
-                    -> { main }
+                -> { getRetryHomeOrExitOption(
+                    -> {deleteContact}
                     )
                 }
             )
@@ -237,9 +237,7 @@ module AddressBook
 
         displayContacts(contacts)
         
-        getBackOrExitOption("Press B to go back and X to exit", 
-            -> { main }
-        )
+        getBackOrExitOption()
     end
 
     # Database operations
@@ -250,9 +248,7 @@ module AddressBook
     
         puts "Contact added successfully"
 
-        getBackOrExitOption("Press (B or X) to go back or exit", 
-            -> { main }
-        )
+        getBackOrExitOption()
     end
 
     def getNewDetail(detail, newDetail, label)
@@ -283,8 +279,8 @@ module AddressBook
         newFirstName = ''
         newLastName = ''
         newPhoneNumber = ''
-        region = ''
-        suburb = ''
+        newRegion = ''
+        newSuburb = ''
 
 
         getNewDetail(firstName, newFirstName, "first name")
@@ -299,9 +295,7 @@ module AddressBook
 
         puts "\nContact Edited successfully"
 
-        getBackOrExitOption("Press (B or X) to go back or exit", 
-            -> { main }
-        )
+        getBackOrExitOption()
     end
 
     def deleteContactInDB(index, contact)
@@ -310,9 +304,7 @@ module AddressBook
 
         puts "\nContact deleted successfully"
     
-        getBackOrExitOption("Press (B or X) to go back or exit", 
-            -> { main }
-        )
+        getBackOrExitOption()
     end
 
 
