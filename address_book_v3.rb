@@ -1,35 +1,26 @@
-# require 'pg'
+require 'active_record'
 
 module AddressBook
-    class Contact
-        attr_accessor :firstName, :lastName, :phoneNumber, :region, :suburb
-
-        def initialize(firstName, lastName, phoneNumber, region, suburb)
-            @firstName = firstName
-            @lastName = lastName
-            @phoneNumber = phoneNumber
-            @region = region
-            @suburb = suburb
-        end
-        
+    class Contact < ActiveRecord::Base
     end
 
-    class CallFile
+    class CallDatabse
         def initialize
-            @file = initFile
+            @db = initDB
             # @contacts = []
         end
     
-        def initFile
-            if !File.exist?('contacts.txt')
-                File.open('contacts.txt', 'w'){}
-            end
+        def initDB
+            ActiveRecord::Base.establish_connection( adapter: 'postgresql', database: 'address_book', host: 'localhost', port: '5432', username: 'postgres', password: 'zero2four' )
         end
     
-        def getFile
-            @file
+        def getDB
+            @db
         end
     end
+    
+    @db = CallDatabse.new
+    @db.initDB
 
     # functions for displaying options and getting user input
 
@@ -137,54 +128,24 @@ module AddressBook
         return detail
     end
 
-    def validateNumber(phoneNumber)
-        /^(233|0)[0-9]{9}$/ === phoneNumber
-    end
-
-    def getPhoneNumber()
-        print "\nEnter phone number: "
-        phoneNumber = gets.chomp
-        while phoneNumber == "" || !validateNumber(phoneNumber) 
-            puts "Enter Valid phone number"
-            print "\nEnter phone number: "
-            phoneNumber = gets.chomp
-            if validateNumber(phoneNumber) == true
-                break
-            end
-        end
-
-        return phoneNumber
-    end
-
-    def getNewPhoneNumber(phoneNumber)
-        # pn = phoneNumber
-        print "Enter new phone number(#{phoneNumber}): "
-        newPhoneNumber = gets.chomp
-        while newPhoneNumber == "" || !validateNumber(newPhoneNumber)
-            print "Enter Valid phone number: "
-            newPhoneNumber = gets.chomp
-            if validateNumber(newPhoneNumber) == true
-                break
-            end
-        end
-
-        return newPhoneNumber
-    end
-
-    def displayContacts
-        if @contacts.length == 0
+    def displayContacts(contacts)
+        if contacts.size == 0
             puts "No contacts found"
             getBackOrExitOption()
         
         else
-            @contacts.each.with_index(1) do |contact, index|
-                puts "\n#{index}. #{contact.firstName} #{contact.lastName} - #{contact.phoneNumber}"
+            contacts.each.with_index(1) do |contact, index|
+                puts "\n#{index}. #{contact['first_name']} #{contact['last_name']} - #{contact['phone_number']}"
             end
         end
     end
 
-    def displaySelectedContact(contact)
-        puts "#{contact.firstName} #{contact.lastName} - #{contact.phoneNumber}"
+    def displaySelectedContact(firstName, lastName, phoneNumber, region, suburb)
+        puts "\nFirst name: #{firstName}"
+        puts "Last name: #{lastName}"
+        puts "Phone number: #{phoneNumber}"
+        puts "Region: #{region}"
+        puts "Suburb: #{suburb}"
     end
 
     def addContact
@@ -192,52 +153,41 @@ module AddressBook
 
         firstName =  getContactDetails("first name", firstName)
         lastName = getContactDetails("last name", lastName)
-        phoneNumber = getPhoneNumber()    
+        phoneNumber = getContactDetails("phone number", phoneNumber)    
         region = getContactDetails("region", region)
         suburb = getContactDetails("suburb", suburb)
 
-        displaySelectedContact(Contact.new(firstName, lastName, phoneNumber, region, suburb))
+        displaySelectedContact(firstName, lastName, phoneNumber, region, suburb)
 
         getYesOrNoOption("Do you want to add contact with the above details?",
-            -> { addContactToFile(Contact.new(firstName, lastName,phoneNumber, region,suburb)) },
+            -> { addContactToDB(firstName, lastName, phoneNumber, region, suburb) },
             -> { getRetryHomeOrExitOption(
-                    -> { addContact },
+                    -> {addContact},
                 ) 
             }
         )          
 
     end
 
-    def loadContacts
-        @contacts = []
-        File.open('contacts.txt', 'r') do |file|
-            file.each_line do |line|
-              f, l, p, r, s = line.chomp.split(',')
-              contact = Contact.new(f, l, p, r, s)
-              @contacts.push(contact)
-            end
-        end
-    end
-
     def editContact
         puts "********Edit Contact********"
 
-        loadContacts()
+        contacts = Contact.all
 
-        displayContacts()
+        displayContacts(contacts)
 
         print "\nEnter the number of the contact you want to edit or (b) to go back: "
         option = gets.chomp
 
         if option.downcase == "b"
             main
-        elsif option.to_i > 0 && option.to_i <= @contacts.length
-            contact = @contacts[option.to_i - 1]
+        elsif option.to_i > 0 && option.to_i <= contacts.size
+            contact = contacts[option.to_i - 1]
 
-            displaySelectedContact(contact)
+            displaySelectedContact(contact['first_name'], contact['last_name'], contact['phone_number'], contact['region'], contact['suburb'])
             
             getYesOrNoOption("Do you want to edit this contact?", 
-                -> {editContactInFile(option.to_i-1, contact)}, 
+                -> {editContactInDB(option.to_i-1, contact)}, 
                 -> { getRetryHomeOrExitOption(
                     -> {editContact}
                     )
@@ -252,21 +202,21 @@ module AddressBook
     def deleteContact
         puts "********Delete Contact********"
 
-        loadContacts()
+        contacts = Contact.all
 
-        displayContacts
+        displayContacts(contacts)
 
         print "\nEnter the number of the contact you want to delete or (b) to go back: "
         option = gets.chomp
 
         if option.downcase == "b"
             main
-        elsif option.to_i > 0 && option.to_i <= @contacts.length
-            contact = @contacts[option.to_i - 1]
+        elsif option.to_i > 0 && option.to_i <= contacts.size
+            contact = contacts[option.to_i - 1]
 
-            displaySelectedContact(contact)
+            displaySelectedContact(contact['first_name'], contact['last_name'], contact['phone_number'], contact['region'], contact['suburb'])
 
-            getYesOrNoOption("Do you want to delete this contact?", -> {deleteContactInFile(option.to_i-1)}, 
+            getYesOrNoOption("Do you want to delete this contact?", -> {deleteContactInDB(option.to_i-1, contact)}, 
                 -> { getRetryHomeOrExitOption(
                     -> {deleteContact}
                     )
@@ -282,30 +232,32 @@ module AddressBook
     def viewContacts
         puts "********View Contacts********"
 
-        loadContacts()
+        contacts = Contact.all
 
-        displayContacts
+        displayContacts(contacts)
         
         getBackOrExitOption()
     end
 
     # Database operations
 
-    def addContactToFile(contact)
-        
-        File.open('contacts.txt', 'a') do |file|
-            
-            file.puts ("#{contact.firstName},#{contact.lastName},#{contact.phoneNumber},#{contact.region},#{contact.suburb}")
-            
-        end      
+    
+    
 
-        
-        puts "Contact added successfully"
+    def addContactToDB(firstName, lastName, phoneNumber, region, suburb)
+
+        contact = Contact.create(first_name: firstName, last_name: lastName, phone_number: phoneNumber, region: region, suburb: suburb)
+
+        if contact
+            puts "\nContact added successfully"
+        else
+            puts "\nContact not added"
+        end
 
         getBackOrExitOption()
     end
 
-    def getNewDetail(detail, label)
+    def getNewDetail(detail, newDetail, label)
         print "Enter new #{label}(#{detail}): "
         newDetail = gets.chomp.capitalize
         while newDetail == ""
@@ -322,44 +274,47 @@ module AddressBook
                 getNewDetail(detail, newDetail, label)
             end
         end
-
-        newDetail
     end
 
-    def editContactInFile(index, contact)
+    def editContactInDB(index, contact)
+        firstName = contact['first_name']
+        lastName = contact['last_name']
+        phoneNumber = contact['phone_number']
+        region = contact['region']
+        suburb = contact['suburb']
+        newFirstName = ''
+        newLastName = ''
+        newPhoneNumber = ''
+        newRegion = ''
+        newSuburb = ''
 
-        newFirstName = getNewDetail(contact.firstName, "first name")
-        newLastName = getNewDetail(contact.lastName, "last name")
-        newPhoneNumber = getNewPhoneNumber(contact.phoneNumber)
-        newRegion = getNewDetail(contact.region, "region")
-        newSuburb = getNewDetail(contact.suburb, "suburb")
 
+        getNewDetail(firstName, newFirstName, "first name")
+        getNewDetail(lastName, newLastName, "last name")
+        getNewDetail(phoneNumber, newPhoneNumber, "phone number")
+        getNewDetail(region, newRegion, "region")
+        getNewDetail(suburb, newSuburb, "suburb")
 
-        puts "#{newFirstName},#{newLastName},#{newPhoneNumber},#{newRegion},#{newSuburb}}"
+        contact = Contact.update(first_name: newFirstName, last_name: newLastName, phone_number: newPhoneNumber, region: newRegion, suburb: newSuburb)
 
-        @contacts[index] = Contact.new(newFirstName, newLastName, newPhoneNumber, newRegion, newSuburb)
-
-        File.open('contacts.txt', 'w') do |file|
-                @contacts.each do |contact|
-                file.puts ("#{contact.firstName},#{contact.lastName},#{contact.phoneNumber},#{contact.region},#{contact.suburb}")
-                end
-         end 
-
-        puts "\nContact Edited successfully"
+        if contact
+            puts "\nContact Edited successfully"
+        else
+            puts "\nContact not edited"
+        end
 
         getBackOrExitOption()
     end
 
-    def deleteContactInFile(index)
-        @contacts.delete_at(index)
+    def deleteContactInDB(index, contact)
 
-        File.open('contacts.txt', 'w') do |file|
-            @contacts.each do |contact|
-            file.puts ("#{contact.firstName},#{contact.lastName},#{contact.phoneNumber},#{contact.region},#{contact.suburb}")
-            end
-        end 
-
-        puts "\nContact deleted successfully"
+        contact = Contact.destroy(contact['id'])
+        
+        if contact
+            puts "\nContact deleted successfully"
+        else
+            puts "\nContact not deleted"
+        end
     
         getBackOrExitOption()
     end

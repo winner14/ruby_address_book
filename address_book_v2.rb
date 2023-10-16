@@ -15,9 +15,6 @@ module AddressBook
             @db
         end
     end
-    
-    @db = CallDatabse.new
-    @db.initDB
 
     # functions for displaying options and getting user input
 
@@ -43,7 +40,7 @@ module AddressBook
         puts "2. Home"
         puts "0. Exit"
 
-        option = gets.chomp.downcase
+        option = gets.chomp
 
         if option == "1"
             onRetry.call
@@ -58,7 +55,7 @@ module AddressBook
     end
 
     def getChooseMenuOption()
-        print "Choose an option(0-4)"
+        print "Choose an option(0-4): "
         option = gets.chomp
 
         if option == "0" || option == "1" || option == "2" || option == "3" || option == "4"
@@ -97,6 +94,7 @@ module AddressBook
     # The main menu
     
     def main
+        system('clear')
         puts "*******Address Book*******"
         puts "\Select an option"
 
@@ -114,11 +112,11 @@ module AddressBook
 
     def getContactDetails(label, detail)
         print "\nEnter #{label}: "
-        detail = gets.chomp
+        detail = gets.chomp.capitalize
         while detail == ""
             puts "#{label} is required"
             print "\nEnter #{label}: "
-            detail = gets.chomp
+            detail = gets.chomp.capitalize
         end
 
         return detail
@@ -242,6 +240,9 @@ module AddressBook
 
     # Database operations
 
+    
+    
+
     def addContactToDB(firstName, lastName, phoneNumber, region, suburb)
 
         @db.getDB.exec("INSERT INTO contacts (first_name, last_name, phone_number, region, suburb) VALUES ('#{firstName}', '#{lastName}', '#{phoneNumber}', '#{region}', '#{suburb}')")
@@ -253,7 +254,7 @@ module AddressBook
 
     def getNewDetail(detail, newDetail, label)
         print "Enter new #{label}(#{detail}): "
-        newDetail = gets.chomp
+        newDetail = gets.chomp.capitalize
         while newDetail == ""
             print "Do you want to keep #{label} as #{detail}? (y/n): "
             option = gets.chomp.downcase
@@ -262,7 +263,7 @@ module AddressBook
                 newDetail = detail
             elsif option == "n"
                 print "Enter new #{label}: "
-                newDetail = gets.chomp
+                newDetail = gets.chomp.capitalize
             else
                 puts "Enter a valid option"
                 getNewDetail(detail, newDetail, label)
@@ -290,8 +291,6 @@ module AddressBook
         getNewDetail(suburb, newSuburb, "suburb")
 
         @db.getDB.exec("UPDATE contacts SET first_name = '#{newFirstName}', last_name = '#{newLastName}', phone_number = '#{newPhoneNumber}', region = '#{newRegion}', suburb = '#{newSuburb}' WHERE id = '#{contact['id']}'")
-
-        # puts contact['id'].inspect
 
         puts "\nContact Edited successfully"
 
